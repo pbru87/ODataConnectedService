@@ -1,0 +1,190 @@
+﻿<UserControl
+    x:Class="Microsoft.OData.ConnectedService.Views.SchemaTypes"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="clr-namespace:Microsoft.OData.ConnectedService.Converters"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:Microsoft.OData.ConnectedService.Views"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+    xmlns:sysWindows="clr-namespace:System.Windows;assembly=PresentationFramework"
+    xmlns:viewModels="clr-namespace:Microsoft.OData.ConnectedService.ViewModels"
+    d:DataContext="{d:DesignInstance Type=viewModels:SchemaTypesViewModel}"
+    d:DesignHeight="300"
+    d:DesignWidth="500"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <RoutedCommand x:Key="SelectAllBoundOperationsForSchemaTypeCmd" />
+        <RoutedCommand x:Key="DeselectAllBoundOperationsForSchemaTypeCmd" />
+        <converters:SchemaTypeModelToVisibilityConverter x:Key="SchemaTypeModelToVisibilityConverter" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+    <UserControl.CommandBindings>
+        <CommandBinding
+            CanExecute="SelectAllBoundOperationsForSchemaTypeCmdCanExecute"
+            Command="{StaticResource SelectAllBoundOperationsForSchemaTypeCmd}"
+            Executed="SelectAllBoundOperationsForSchemaTypeCmdExecuted" />
+        <CommandBinding
+            CanExecute="DeselectAllBoundOperationsForSchemaTypeCmdCanExecute"
+            Command="{StaticResource DeselectAllBoundOperationsForSchemaTypeCmd}"
+            Executed="DeselectAllBoundOperationsForSchemaTypeCmdExecuted" />
+    </UserControl.CommandBindings>
+    <StackPanel>
+        <TextBlock Margin="0,5,0,5">
+            Select which entity types with its bound operations will be included in the generated code.
+        </TextBlock>
+        <StackPanel Margin="0,5,0,5" Orientation="Horizontal">
+            <Button
+                x:Name="SelectAllSchemaTypes"
+                MinWidth="75"
+                Margin="0,0,2,0"
+                Click="SelectAllSchemaTypes_Click">
+                Select All
+            </Button>
+            <Button
+                x:Name="DeselectAllSchemaTypes"
+                MinWidth="75"
+                Margin="0,0,2,0"
+                Click="DeselectAllSchemaTypes_Click">
+                Deselect All
+            </Button>
+            <DockPanel Margin="5,5,0,0">
+                <TextBlock Text="Selected types:" />
+                <TextBlock
+                    x:Name="SelectedSchemaTypesCount"
+                    Margin="5,0,0,0"
+                    Text="0" />
+                <TextBlock Text="/" />
+                <TextBlock Text="{Binding SchemaTypesCount}" />
+            </DockPanel>
+            <DockPanel Margin="5,5,0,0">
+                <TextBlock Text="Selected bound operations:" />
+                <TextBlock
+                    x:Name="SelectedBoundOperationsCount"
+                    Margin="5,0,0,0"
+                    Text="0" />
+                <TextBlock Text="/" />
+                <TextBlock Text="{Binding BoundOperationsCount}" />
+            </DockPanel>
+        </StackPanel>
+        <StackPanel Margin="0,5,0,5" Orientation="Horizontal">
+            <TextBlock Margin="0,5,0,5" Text="Search schemas:" />
+            <TextBox
+                Width="250"
+                Height="20"
+                Margin="5,5,10,5"
+                HorizontalAlignment="Left"
+                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+        </StackPanel>
+        <TreeView
+            x:Name="SchemaTypesTreeView"
+            MinHeight="150"
+            MaxHeight="230"
+            ItemsSource="{Binding FilteredSchemaTypes}"
+            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+            Visibility="Visible">
+            <TreeView.Resources>
+                <ContextMenu x:Key="SchemaTypeContextMenu" Visibility="{Binding ., Mode=OneWay, Converter={StaticResource SchemaTypeModelToVisibilityConverter}}">
+                    <MenuItem
+                        x:Name="SelectAllBoundOperationsForSchemaType"
+                        Command="{StaticResource SelectAllBoundOperationsForSchemaTypeCmd}"
+                        CommandParameter="{Binding .}"
+                        Header="Select All Bound Operations"
+                        IsCheckable="False" />
+                    <MenuItem
+                        x:Name="DeselectAllBoundOperationsForSchemaType"
+                        Command="{StaticResource DeselectAllBoundOperationsForSchemaTypeCmd}"
+                        CommandParameter="{Binding .}"
+                        Header="Deselect All Bound Operations"
+                        IsCheckable="False" />
+                </ContextMenu>
+            </TreeView.Resources>
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate ItemsSource="{Binding BoundOperations}">
+                    <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+                        <CheckBox
+                            Width="16"
+                            Margin="0,5,5,0"
+                            VerticalAlignment="Center"
+                            IsChecked="{Binding Path=IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock
+                            VerticalAlignment="Bottom"
+                            ContextMenu="{StaticResource SchemaTypeContextMenu}"
+                            Text="{Binding Path=ShortName}">
+                            <TextBlock.Visibility>
+                                <Binding>
+                                    <Binding.ElementName>
+                                        <sys:String>ShowSchemaTypesFullName</sys:String>
+                                    </Binding.ElementName>
+                                    <Binding.Path>
+                                        <sysWindows:PropertyPath>IsChecked</sysWindows:PropertyPath>
+                                    </Binding.Path>
+                                    <Binding.Converter>
+                                        <StaticResource ResourceKey="BoolToVisibilityConverter" />
+                                    </Binding.Converter>
+                                    <Binding.ConverterParameter>
+                                        <sys:Boolean>true</sys:Boolean>
+                                    </Binding.ConverterParameter>
+                                </Binding>
+                            </TextBlock.Visibility>
+                        </TextBlock>
+                        <TextBlock
+                            VerticalAlignment="Bottom"
+                            ContextMenu="{StaticResource SchemaTypeContextMenu}"
+                            Text="{Binding Path=Name}"
+                            Visibility="{Binding ElementName=ShowSchemaTypesFullName, Path=IsChecked, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    </StackPanel>
+                    <HierarchicalDataTemplate.ItemTemplate>
+                        <DataTemplate>
+                            <Grid x:Name="Grid1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="0.2*" />
+                                    <ColumnDefinition Width="0.7*" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox
+                                    Grid.Column="0"
+                                    Width="16"
+                                    Margin="0,5,5,0"
+                                    VerticalAlignment="Center"
+                                    IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock
+                                    Grid.Column="1"
+                                    VerticalAlignment="Bottom"
+                                    Text="{Binding ShortName}" />
+                            </Grid>
+                        </DataTemplate>
+                    </HierarchicalDataTemplate.ItemTemplate>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+        <StackPanel Margin="0,5,0,5" Orientation="Horizontal">
+            <Button
+                x:Name="SelectAllBoundOperations"
+                MinWidth="75"
+                Margin="0,0,2,0"
+                Click="SelectAllBoundOperations_Click">
+                Select All Bound Operations
+            </Button>
+            <Button
+                x:Name="DeselectAllBoundOperations"
+                MinWidth="75"
+                Margin="0,0,2,0"
+                Click="DeselectAllBoundOperations_Click">
+                Deselect All Bound Operations
+            </Button>
+        </StackPanel>
+        <DockPanel Margin="0,5,0,0">
+            <CheckBox
+                x:Name="ShowSchemaTypesFullName"
+                Width="16"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center"
+                Content="Show full name for schema types."
+                IsChecked="False" />
+            <TextBlock Margin="5,0,0,0" FontWeight="Bold">
+                Show full name for schema types.
+            </TextBlock>
+        </DockPanel>
+    </StackPanel>
+</UserControl>

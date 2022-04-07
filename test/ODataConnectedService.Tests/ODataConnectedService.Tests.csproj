@@ -1,0 +1,271 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{903B31D0-BE14-4D9E-BA76-186FA82B3A37}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ODataConnectedService.Tests</RootNamespace>
+    <AssemblyName>ODataConnectedService.Tests</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">15.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+    <ReferencePath>$(ProgramFiles)\Common Files\microsoft shared\VSTT\$(VisualStudioVersion)\UITestExtensionPackages</ReferencePath>
+    <IsCodedUITest>False</IsCodedUITest>
+    <TestProjectType>UnitTest</TestProjectType>
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DelaySign>false</DelaySign>
+  </PropertyGroup>
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>OcsKey.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="envdte, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.TextTemplating.Interfaces.10.0, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
+    <Reference Include="Microsoft.OData.ConnectedService.Fakes">
+      <HintPath>FakesAssemblies\Microsoft.OData.ConnectedService.Fakes.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.QualityTools.Testing.Fakes, Version=12.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
+    <Reference Include="Microsoft.Data.Services.Client, Version=5.6.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\external\Binaries\V3\Microsoft.Data.Services.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Data.Services.Design, Version=5.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\external\Binaries\V3\Microsoft.Data.Services.Design.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Common\ExtensionMethodsTests.cs" />
+    <Compile Include="Common\EdmHelperTests.cs" />
+    <Compile Include="Converters\BoolToVisibilityConverterTests.cs" />
+    <Compile Include="Converters\SchemaTypeModelToVisibilityConverterTests.cs" />
+    <Compile Include="ODataConnectedServiceWizardTests.cs" />
+    <Compile Include="Common\ProjectHelperTests.cs" />
+    <Compile Include="ViewModels\ConfigOdataEndPointViewModelTests.cs" />
+    <Compile Include="Properties\AssemblyRefs.cs" />
+    <Compile Include="Templates\CodeGenerationContextTest.cs" />
+    <Compile Include="CodeGeneration\CodeGenDescriptorTest.cs" />
+    <Compile Include="Templates\ODataClientTemplateUnitTests.cs" />
+    <Compile Include="Templates\ODataT4CodeGeneratorTestDescriptors.cs" />
+    <Compile Include="Templates\ODataT4CodeGeneratorTests.cs" />
+    <Compile Include="Templates\ODataT4CodeGeneratorUnitTest.cs" />
+    <Compile Include="Templates\ODataT4CodeGeneratorTest.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ODataConnectedServiceHandlerTest.cs" />
+    <Compile Include="TestHelpers\GeneratedCodeHelpers.cs" />
+    <Compile Include="TestHelpers\TestComponentModel.cs" />
+    <Compile Include="TestHelpers\TestConnectedServiceHandlerContext.cs" />
+    <Compile Include="TestHelpers\TestConnectedServiceHandlerHelper.cs" />
+    <Compile Include="Templates\UniqueIdentifierServiceTests.cs" />
+    <Compile Include="Templates\UtilsTests.cs" />
+    <Compile Include="TestHelpers\TestVsPackageInstaller.cs" />
+    <Compile Include="TestHelpers\TestVsPackageInstallerServices.cs" />
+    <Compile Include="ViewModels\OperationImportsViewModelTests.cs" />
+    <Compile Include="ViewModels\SchemaTypesViewModelTests.cs" />
+    <Compile Include="Views\UserSettingsTest.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="EnvDTE">
+      <Version>8.0.2</Version>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions">
+      <Version>2.0.0.1</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers">
+      <Version>2.9.6</Version>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.OData.Client">
+      <Version>7.6.3</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.ComponentModelHost">
+      <Version>15.7.27703</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.ConnectedServices">
+      <Version>2.0.0</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Shell.Immutable.11.0">
+      <Version>11.0.50727</Version>
+    </PackageReference>
+    <PackageReference Include="Moq">
+      <Version>4.13.1</Version>
+    </PackageReference>
+    <PackageReference Include="MSTest.TestAdapter">
+      <Version>1.3.2</Version>
+    </PackageReference>
+    <PackageReference Include="MSTest.TestFramework">
+      <Version>1.3.2</Version>
+    </PackageReference>
+    <PackageReference Include="NuGet.VisualStudio">
+      <Version>4.0.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.ComponentModel.Annotations">
+      <Version>4.5.0</Version>
+    </PackageReference>
+    <PackageReference Include="System.Xml.ReaderWriter">
+      <Version>4.3.1</Version>
+    </PackageReference>
+    <PackageReference Include="xunit">
+      <Version>2.4.1</Version>
+    </PackageReference>
+    <PackageReference Include="xunit.runner.visualstudio">
+      <Version>2.4.1</Version>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Microsoft.OData.CodeGen\Microsoft.OData.CodeGen.csproj">
+      <Project>{86faaaec-3bbd-479c-8a44-d2715a6bd4c1}</Project>
+      <Name>Microsoft.OData.CodeGen</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\ODataConnectedService\ODataConnectedService.csproj">
+      <Project>{a8bc5b8e-9ab7-4257-b8f1-e7c62169f9b5}</Project>
+      <Name>ODataConnectedService</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="CodeGenReferences\*.cs" />
+    <EmbeddedResource Include="CodeGenReferences\*.vb" />
+    <EmbeddedResource Include="CodeGenReferences\MultiReferenceModelCoreTerms.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CodeGenReferences\MultiReferenceModelDeviceModelTerms.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CodeGenReferences\MultiReferenceModelGPS.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CodeGenReferences\MultiReferenceModelLocation.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CodeGenReferences\MultiReferenceModelMap.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="CodeGenReferences\MultiReferenceModelRelativeUri.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\src\Microsoft.OData.CodeGen\Templates\ODataT4CodeGenerator.ttinclude">
+      <Link>Templates\ODataT4CodeGenerator.ttinclude</Link>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\..\src\Microsoft.OData.CodeGen\Templates\ODataT4CodeGenFilesManager.ttinclude">
+      <Link>Templates\ODataT4CodeGenFilesManager.ttinclude</Link>
+    </EmbeddedResource>
+    <None Include="35MSSharedLib1024.snk" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\src\Microsoft.OData.CodeGen\Templates\ODataT4CodeGenerator.tt">
+      <Link>Templates\ODataT4CodeGenerator.tt</Link>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="CodeGeneration\SampleServiceV2.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <EmbeddedResource Include="CodeGenReferences\AbstractEntityTypeWithoutKey.xml" />
+    <EmbeddedResource Include="CodeGenReferences\DupNames.xml" />
+    <EmbeddedResource Include="CodeGenReferences\EmptySchema.xml" />
+    <EmbeddedResource Include="CodeGenReferences\EntitiesEnumsFunctions.xml" />
+    <EmbeddedResource Include="CodeGenReferences\EntityBooleanPropertyWithDefaultValue.xml" />
+    <EmbeddedResource Include="CodeGenReferences\EntityHierarchyWithIDAndId.xml" />
+    <EmbeddedResource Include="CodeGenReferences\KeywordsAsNames.xml" />
+    <EmbeddedResource Include="CodeGenReferences\MergedFunctionalTest.xml" />
+    <EmbeddedResource Include="CodeGenReferences\Multiplicity.xml" />
+    <EmbeddedResource Include="CodeGenReferences\MultiReferenceModel.xml" />
+    <EmbeddedResource Include="CodeGenReferences\NamespaceInKeywords.xml" />
+    <EmbeddedResource Include="CodeGenReferences\NamespaceInKeywordsWithRefModel.xml" />
+    <EmbeddedResource Include="CodeGenReferences\NamespaceInKeywordsWithRefModelReferenced.xml" />
+    <EmbeddedResource Include="CodeGenReferences\NamespacePrefixRepeatWithSchemaNameSpace.xml" />
+    <EmbeddedResource Include="CodeGenReferences\NamespacePrefixWithDoubleNamespaces.xml" />
+    <EmbeddedResource Include="CodeGenReferences\NamespacePrefixWithInheritence.xml" />
+    <EmbeddedResource Include="CodeGenReferences\NamespacePrefixWithSingleNamespace.xml" />
+    <EmbeddedResource Include="CodeGenReferences\OverrideOperations.xml" />
+    <EmbeddedResource Include="CodeGenReferences\PrefixConflict.xml" />
+    <EmbeddedResource Include="CodeGenReferences\Simple.xml" />
+    <EmbeddedResource Include="CodeGenReferences\SimpleMultipleFiles.xml" />
+    <EmbeddedResource Include="CodeGenReferences\SourceParameterOrKeysProperty.xml" />
+    <EmbeddedResource Include="CodeGenReferences\TempSimple.xml" />
+    <EmbeddedResource Include="CodeGenReferences\TypeDefinitions.xml" />
+    <EmbeddedResource Include="CodeGenReferences\UnexpectedElementsAndAttributes.xml" />
+    <EmbeddedResource Include="CodeGenReferences\UpperCamelCaseWithNamespacePrefix.xml" />
+    <EmbeddedResource Include="CodeGenReferences\UpperCamelCaseWithoutNamespacePrefix.xml" />
+    <EmbeddedResource Include="CodeGenReferences\SameNamedEntityMultipleFiles.xml" />
+    <EmbeddedResource Include="CodeGenReferences\EntityTypeMarkedObsolete.xml" />
+    <EmbeddedResource Include="CodeGenReferences\EntitySetMarkedObsolete.xml" />
+    <EmbeddedResource Include="CodeGenReferences\SingletonsMarkedObsolete.xml" />
+    <EmbeddedResource Include="CodeGenReferences\BoundActionsAndFunctionsMarkedObsolete.xml" />
+    <EmbeddedResource Include="CodeGenReferences\PropertyAndNavPropertiesMarkedObsolete.xml" />
+    <EmbeddedResource Include="CodeGenReferences\FunctionsAndActionImportsMarkedObsolete.xml" />
+    <EmbeddedResource Include="CodeGenReferences\RevisionsAnnotationMissingDescription.xml" />
+    <EmbeddedResource Include="CodeGenReferences\RevisionsAnnotationMissingRevisionKind.xml" />
+    <EmbeddedResource Include="CodeGenReferences\MaxLength.xml" />
+    <Content Include="TestMetadataCsdl.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestMetadataCsdlSimple.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TestMetadataCsdlV3.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CodeGeneration\SampleServiceV3.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CodeGeneration\TestConfigAllOptionsSet.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CodeGeneration\TestConfigBasicVB.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="CodeGeneration\TestConfigBasic.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

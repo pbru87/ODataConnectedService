@@ -1,0 +1,833 @@
+﻿//---------------------------------------------------------------------------------
+// <copyright file="ODataT4CodeGeneratorTestDescriptors.cs" company=".NET Foundation">
+//      Copyright (c) .NET Foundation and Contributors. All rights reserved.
+//      See License.txt in the project root for license information.
+// </copyright>
+//---------------------------------------------------------------------------------
+
+using FluentAssertions;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml;
+using System.Reflection;
+using Microsoft.OData.Edm;
+using Microsoft.OData.Edm.Csdl;
+using Microsoft.OData.Edm.Validation;
+using System.Net;
+
+namespace ODataConnectedService.Tests
+{
+    public static partial class ODataT4CodeGeneratorTestDescriptors
+    {
+        private const string ExpectedCSharpUseDSC = "ExpectedCSharpUseDSC";
+        private const string ExpectedCSharp = "ExpectedCSharp";
+        private const string ExpectedVBUseDSC = "ExpectedVBUseDSC";
+        private const string ExpectedVB = "ExpectedVB";
+        private const string T4Version = "#VersionNumber#";
+
+        public class ODataT4CodeGeneratorTestsDescriptor
+        {
+            /// <summary>
+            /// Edmx Metadata to generate code from.
+            /// </summary>
+            public string Metadata { get; set; }
+
+            /// <summary>
+            /// Gets or Sets the func for getting the referenced model's stream.
+            /// </summary>
+            public Func<Uri, WebProxy, IList<string>, XmlReader> GetReferencedModelReaderFunc { get; set; }
+
+            /// <summary>
+            /// Dictionary of expected CSharp/VB code generation results.
+            /// </summary>
+            public Dictionary<string, string> ExpectedResults { get; set; }
+
+            /// <summary>
+            /// A custom verification action to perform. Takes in the generated code and runs asserts that the code was generated properly. A verification function provided here should be valid for both CodeGen using the Design DLL and T4.
+            /// </summary>
+            public Action<string, bool, bool> Verify { get; set; }
+        }
+
+        internal static void ValidateXMLFile(string tempFilePath)
+        {
+            var doc = new XmlDocument();
+            doc.Load(tempFilePath);
+        }
+
+        internal static void ValidateEdmx(string tempFilePath)
+        {
+            var edmx = File.ReadAllText(tempFilePath);
+            using (var stringReader = new StringReader(edmx))
+            {
+                using (var xmlReader = XmlReader.Create(stringReader))
+                {
+                    IEdmModel edmModel = null;
+                    IEnumerable<EdmError> edmErrors = null;
+                    CsdlReader.TryParse(xmlReader, out edmModel, out edmErrors);
+                    edmErrors.Should().BeEmpty();
+                };
+            };
+        }
+
+        private static void VerifyGeneratedCode(string actualCode, Dictionary<string, string> expectedCode, bool isCSharp, bool useDSC, string key = null)
+        {
+            string expected;
+            if (isCSharp && useDSC)
+            {
+                expected = expectedCode[ExpectedCSharpUseDSC];
+            }
+            else if (isCSharp && !useDSC)
+            {
+                expected = expectedCode[ExpectedCSharp];
+            }
+            else if (!isCSharp && useDSC)
+            {
+                expected = expectedCode[ExpectedVBUseDSC];
+            }
+            else
+            {
+                expected = expectedCode[ExpectedVB];
+            }
+
+            string actualBak = actualCode;
+            var normalizedExpectedCode = Regex.Replace(expected, "// Generation date:.*", string.Empty, RegexOptions.Multiline);
+            normalizedExpectedCode = Regex.Replace(normalizedExpectedCode, "'Generation date:.*", string.Empty, RegexOptions.Multiline);
+            normalizedExpectedCode = Regex.Replace(normalizedExpectedCode, "//     Runtime Version:.*", string.Empty, RegexOptions.Multiline);
+            normalizedExpectedCode = Regex.Replace(normalizedExpectedCode, "'     Runtime Version:.*", string.Empty, RegexOptions.Multiline);
+            normalizedExpectedCode = Regex.Replace(normalizedExpectedCode,
+                "global::System.CodeDom.Compiler.GeneratedCodeAttribute\\(.*\\)",
+                "global::System.CodeDom.Compiler.GeneratedCodeAttribute(\"Microsoft.OData.Client.Design.T4\", \"" + T4Version + "\")",
+                RegexOptions.Multiline);
+            normalizedExpectedCode = Regex.Replace(normalizedExpectedCode,
+                "Global.System.CodeDom.Compiler.GeneratedCodeAttribute\\(.*\\)",
+                "Global.System.CodeDom.Compiler.GeneratedCodeAttribute(\"Microsoft.OData.Client.Design.T4\", \"" + T4Version + "\")",
+                RegexOptions.Multiline);
+
+            //Remove the spaces from the string to avoid indentation change errors
+            var rawExpectedCode = Regex.Replace(normalizedExpectedCode, @"\s+", "");
+            actualCode = Regex.Replace(actualCode, "// Generation date:.*", string.Empty);
+            actualCode = Regex.Replace(actualCode, "'Generation date:.*", string.Empty);
+            actualCode = Regex.Replace(actualCode, "//     Runtime Version:.*", string.Empty);
+            actualCode = Regex.Replace(actualCode, "'     Runtime Version:.*", string.Empty);
+            //Remove the spaces from the string to avoid indentation change errors
+            var rawActualCode = Regex.Replace(actualCode, @"\s+", "");
+
+            if (key == null)
+            {
+                rawActualCode.Should().Be(rawExpectedCode);
+            }
+            else
+            {
+                var equal = rawExpectedCode == rawActualCode;
+
+                if (!equal)
+                {
+                    var filename = key + (useDSC ? "DSC" : "") + (isCSharp ? ".cs" : ".vb");
+                    var currentFolder = Directory.GetCurrentDirectory();
+                    var path = Path.Combine(currentFolder, filename);
+                    File.WriteAllText(path, actualBak);
+                    var basePath = Path.Combine(currentFolder, "Expected" + filename);
+                    File.WriteAllText(basePath, expected);
+                    equal.Should().Be(true, "Baseline not equal.\n " +
+                        "To diff run: \n" +
+                        "odd \"{0}\" \"{1}\"\n" +
+                        "To update run: \n" +
+                        "copy /y \"{1}\" \"{0}\"\n" +
+                        "\n", basePath, path);
+                }
+            }
+        }
+
+        internal static string GetFileContent(string fileName)
+        {
+            return LoadContentFromBaseline(fileName);
+        }
+
+        internal static string GetAbsoluteUriOfFile(string fileName)
+        {
+            var outPutDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().CodeBase);
+            var filePath = Path.Combine(outPutDirectory, $"CodeGenReferences\\{fileName}");
+            return filePath;
+        }
+
+        private const string BaseName = "ODataConnectedService.Tests.CodeGenReferences.";
+        private static readonly Assembly Assembly = Assembly.GetExecutingAssembly();
+
+        private static string LoadContentFromBaseline(string key)
+        {
+            Stream stream = null;
+            try
+            {
+                stream = Assembly.GetManifestResourceStream(BaseName + key);
+                if (stream == null)
+                {
+                    throw new ApplicationException("Baseline [" + key + "] not found.");
+                }
+
+                using (var sr = new StreamReader(stream))
+                {
+                    stream = null;
+                    return sr.ReadToEnd();
+                }
+            }
+            finally
+            {
+                if (stream != null)
+                {
+                    stream.Dispose();
+                }
+            }
+        }
+
+        #region EntityBooleanPropertyWithDefaultValue
+        public static string EdmxEntityBooleanPropertyWithDefaultValue = LoadContentFromBaseline("EntityBooleanPropertyWithDefaultValue.xml");
+        public static string EntityBooleanPropertyWithDefaultValueCSharp = LoadContentFromBaseline("EntityBooleanPropertyWithDefaultValue.cs");
+        public static string EntityBooleanPropertyWithDefaultValueCSharpUseDSC = LoadContentFromBaseline("EntityBooleanPropertyWithDefaultValueDSC.cs");
+        public static string EntityBooleanPropertyWithDefaultValueVB = LoadContentFromBaseline("EntityBooleanPropertyWithDefaultValue.vb");
+        public static string EntityBooleanPropertyWithDefaultValueVBUseDSC = LoadContentFromBaseline("EntityBooleanPropertyWithDefaultValueDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor EntityBooleanPropertyWithDefaultValue = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxEntityBooleanPropertyWithDefaultValue,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, EntityBooleanPropertyWithDefaultValueCSharp },
+                { ExpectedCSharpUseDSC, EntityBooleanPropertyWithDefaultValueCSharpUseDSC },
+                { ExpectedVB, EntityBooleanPropertyWithDefaultValueVB },
+                { ExpectedVBUseDSC, EntityBooleanPropertyWithDefaultValueVBUseDSC }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, EntityBooleanPropertyWithDefaultValue.ExpectedResults, isCSharp, useDSC, "EntityBooleanPropertyWithDefaultValue"),
+        };
+        #endregion
+
+        #region EntityHierarchyWithIDAndId
+
+        public static string EdmxEntityHierarchyWithIDAndId = LoadContentFromBaseline("EntityHierarchyWithIDAndId.xml");
+        public static string EntityHierarchyWithIDAndIdCSharpUseDSC = LoadContentFromBaseline("EntityHierarchyWithIDAndIdDSC.cs");
+        public static string EntityHierarchyWithIDAndIdVBUseDSC = LoadContentFromBaseline("EntityHierarchyWithIDAndIdDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor EntityHierarchyWithIDAndId = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxEntityHierarchyWithIDAndId,
+            ExpectedResults = new Dictionary<string, string>() { { ExpectedCSharpUseDSC, EntityHierarchyWithIDAndIdCSharpUseDSC }, { ExpectedVBUseDSC, EntityHierarchyWithIDAndIdVBUseDSC } },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, EntityHierarchyWithIDAndId.ExpectedResults, isCSharp, useDSC, "EntityHierarchyWithIDAndId"),
+        };
+
+        #endregion
+
+        #region Simple
+
+        public static string EdmxSimple = LoadContentFromBaseline("Simple.xml");
+        public static string SimpleCSharp = LoadContentFromBaseline("Simple.cs");
+        public static string SimpleCSharpUseDSC = LoadContentFromBaseline("SimpleDSC.cs");
+        public static string SimpleVB = LoadContentFromBaseline("Simple.vb");
+        public static string SimpleVBUseDSC = LoadContentFromBaseline("SimpleDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor Simple = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxSimple,
+            ExpectedResults = new Dictionary<string, string>() { { ExpectedCSharp, SimpleCSharp }, { ExpectedCSharpUseDSC, SimpleCSharpUseDSC }, { ExpectedVB, SimpleVB }, { ExpectedVBUseDSC, SimpleVBUseDSC } },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, Simple.ExpectedResults, isCSharp, useDSC, "Simple"),
+        };
+        #endregion
+
+        #region MaxLength
+
+        public static string EdmxMaxLength = LoadContentFromBaseline("MaxLength.xml");
+        public static string MaxLengthCSharp = LoadContentFromBaseline("MaxLength.cs");
+        public static string MaxLengthCSharpUseDSC = LoadContentFromBaseline("MaxLengthDSC.cs");
+        public static string MaxLengthVB = LoadContentFromBaseline("MaxLength.vb");
+        public static string MaxLengthVBUseDSC = LoadContentFromBaseline("MaxLengthDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor MaxLength = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxMaxLength,
+            ExpectedResults = new Dictionary<string, string>() { { ExpectedCSharp, MaxLengthCSharp }, { ExpectedCSharpUseDSC, MaxLengthCSharpUseDSC }, { ExpectedVB, MaxLengthVB }, { ExpectedVBUseDSC, MaxLengthVBUseDSC } },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, MaxLength.ExpectedResults, isCSharp, useDSC, "MaxLength"),
+        };
+
+        #endregion
+
+        #region SimpleMultipleFiles
+        public static string EdmxSimpleMultipleFiles = LoadContentFromBaseline("SimpleMultipleFiles.xml");
+        public static string SimpleMultipleFilesCSharp = LoadContentFromBaseline("SimpleMultipleFilesMain.cs");
+        public static ODataT4CodeGeneratorTestsDescriptor SimpleMultipleFiles = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxSimpleMultipleFiles,
+            ExpectedResults = new Dictionary<string, string>() { { ExpectedCSharp, SimpleMultipleFilesCSharp }, { ExpectedCSharpUseDSC, SimpleCSharpUseDSC }, { ExpectedVB, SimpleVB }, { ExpectedVBUseDSC, SimpleVBUseDSC } },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, SimpleMultipleFiles.ExpectedResults, isCSharp, useDSC, "SimpleMultipleFiles"),
+        };
+        #endregion
+
+        #region SameNamedEntityMultipleFiles
+        public static string EdmxSameNamedEntityMultipleFiles = LoadContentFromBaseline("SameNamedEntityMultipleFiles.xml");
+        public static string SameNamedEntityMultipleFilesNamespace1CSharp = LoadContentFromBaseline("SameNamedEntityMultipleFilesNamespace1Main.cs");
+        public static ODataT4CodeGeneratorTestsDescriptor SameNamedEntityMultipleFiles = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxSameNamedEntityMultipleFiles,
+            ExpectedResults = new Dictionary<string, string>() { { ExpectedCSharp, SameNamedEntityMultipleFilesNamespace1CSharp } },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, SameNamedEntityMultipleFiles.ExpectedResults, isCSharp, useDSC, "SameNamedEntityMultipleFiles"),
+        };
+        #endregion
+
+        #region NamespacePrefix
+
+        public static string EdmxNamespacePrefixWithSingleNamespace = LoadContentFromBaseline("NamespacePrefixWithSingleNamespace.xml");
+        public static string NamespacePrefixWithSingleNamespaceCSharp = LoadContentFromBaseline("NamespacePrefixWithSingleNamespace.cs");
+        public static string NamespacePrefixWithSingleNamespaceVB = LoadContentFromBaseline("NamespacePrefixWithSingleNamespace.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor NamespacePrefixWithSingleNamespace = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxNamespacePrefixWithSingleNamespace,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, NamespacePrefixWithSingleNamespaceCSharp },
+                { ExpectedVB, NamespacePrefixWithSingleNamespaceVB }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, NamespacePrefixWithSingleNamespace.ExpectedResults, isCSharp, useDSC, "NamespacePrefixWithSingleNamespace"),
+        };
+
+        public static string EdmxNamespacePrefixWithDoubleNamespaces = LoadContentFromBaseline("NamespacePrefixWithDoubleNamespaces.xml");
+        public static string NamespacePrefixWithDoubleNamespacesCSharp = LoadContentFromBaseline("NamespacePrefixWithDoubleNamespaces.cs");
+        public static string NamespacePrefixWithDoubleNamespacesVB = LoadContentFromBaseline("NamespacePrefixWithDoubleNamespaces.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor NamespacePrefixWithDoubleNamespaces = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxNamespacePrefixWithDoubleNamespaces,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, NamespacePrefixWithDoubleNamespacesCSharp },
+                { ExpectedVB, NamespacePrefixWithDoubleNamespacesVB }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, NamespacePrefixWithDoubleNamespaces.ExpectedResults, isCSharp, useDSC, "NamespacePrefixWithDoubleNamespaces"),
+        };
+
+        public static string EdmxNamespacePrefixWithInheritence = LoadContentFromBaseline("NamespacePrefixWithInheritence.xml");
+        public static string NamespacePrefixWithInheritenceCSharp = LoadContentFromBaseline("NamespacePrefixWithInheritence.cs");
+        public static string NamespacePrefixWithInheritenceVB = LoadContentFromBaseline("NamespacePrefixWithInheritence.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor NamespacePrefixWithInheritence = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxNamespacePrefixWithInheritence,
+            ExpectedResults = new Dictionary<string, string>()
+        {
+                { ExpectedCSharp, NamespacePrefixWithInheritenceCSharp },
+                { ExpectedVB, NamespacePrefixWithInheritenceVB }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, NamespacePrefixWithInheritence.ExpectedResults, isCSharp, useDSC, "NamespacePrefixWithInheritence"),
+        };
+
+        #endregion
+
+        #region NamespacePrefixRepeatWithSchemaNameSpace
+
+        public static string EdmxNamespacePrefixRepeatWithSchemaNameSpace = LoadContentFromBaseline("NamespacePrefixRepeatWithSchemaNameSpace.xml");
+        public static string NamespacePrefixRepeatWithSchemaNameSpaceCSharp = LoadContentFromBaseline("NamespacePrefixRepeatWithSchemaNameSpace.cs");
+
+        public static ODataT4CodeGeneratorTestsDescriptor NamespacePrefixRepeatWithSchemaNameSpace = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxNamespacePrefixRepeatWithSchemaNameSpace,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                {ExpectedCSharp, NamespacePrefixRepeatWithSchemaNameSpaceCSharp},
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, NamespacePrefixRepeatWithSchemaNameSpace.ExpectedResults, isCSharp, useDSC, "NamespacePrefixRepeatWithSchemaNameSpace"),
+        };
+
+        #endregion
+
+        #region KeywordsAsNames
+
+        public static string EdmxKeywordsAsNames = LoadContentFromBaseline("KeywordsAsNames.xml");
+        public static string KeywordsAsNamesCSharp = LoadContentFromBaseline("KeywordsAsNames.cs");
+        public static string KeywordsAsNamesVB = LoadContentFromBaseline("KeywordsAsNames.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor KeywordsAsNames = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxKeywordsAsNames,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, KeywordsAsNamesCSharp },
+                { ExpectedVB, KeywordsAsNamesVB }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, KeywordsAsNames.ExpectedResults, isCSharp, useDSC, "KeywordsAsNames"),
+        };
+
+        #endregion
+
+        #region MergedFunctionalTest
+
+        public static string EdmxMergedFunctionalTest = LoadContentFromBaseline("MergedFunctionalTest.xml");
+        public static string MergedFunctionalTestCSharp = LoadContentFromBaseline("MergedFunctionalTest.cs");
+        public static string MergedFunctionalTestVB = LoadContentFromBaseline("MergedFunctionalTest.vb");
+        public static string MergedFunctionalTestCSharpUseDSC = LoadContentFromBaseline("MergedFunctionalTestDSC.cs");
+        public static string MergedFunctionalTestVBUseDSC = LoadContentFromBaseline("MergedFunctionalTestDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor MergedFunctionalTest = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxMergedFunctionalTest,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                {ExpectedCSharp, MergedFunctionalTestCSharp},
+                {ExpectedCSharpUseDSC, MergedFunctionalTestCSharpUseDSC},
+                {ExpectedVB, MergedFunctionalTestVB},
+                {ExpectedVBUseDSC, MergedFunctionalTestVBUseDSC}
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, MergedFunctionalTest.ExpectedResults, isCSharp, useDSC, "MergedFunctionalTest"),
+        };
+
+        #endregion
+
+        #region Multiplicity
+
+        public static string EdmxMultiplicity = LoadContentFromBaseline("Multiplicity.xml");
+        public static string MultiplicityCSharp = LoadContentFromBaseline("Multiplicity.cs");
+        public static string MultiplicityVB = LoadContentFromBaseline("Multiplicity.vb");
+        public static string MultiplicityCSharpUseDSC = LoadContentFromBaseline("MultiplicityDSC.cs");
+        public static string MultiplicityVBUseDSC = LoadContentFromBaseline("MultiplicityDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor Multiplicity = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxMultiplicity,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, MultiplicityCSharp },
+                { ExpectedCSharpUseDSC, MultiplicityCSharpUseDSC },
+                { ExpectedVB, MultiplicityVB },
+                { ExpectedVBUseDSC, MultiplicityVBUseDSC }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, Multiplicity.ExpectedResults, isCSharp, useDSC, "MultiplicityDSC"),
+        };
+
+        #endregion
+
+        #region EmptySchema
+
+        public static string EdmxEmptySchema = LoadContentFromBaseline("EmptySchema.xml");
+        public static string EmptySchemaCSharp = LoadContentFromBaseline("EmptySchema.cs");
+        public static string EmptySchemaVBUseDSC = LoadContentFromBaseline("EmptySchemaDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor EmptySchema = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxEmptySchema,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, EmptySchemaCSharp },
+                { ExpectedVBUseDSC, EmptySchemaVBUseDSC }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, EmptySchema.ExpectedResults, isCSharp, useDSC, "EmptySchema"),
+        };
+
+        #endregion
+
+        #region NamespaceInKeywords
+
+        public static string EdmxNamespaceInKeywords = LoadContentFromBaseline("NamespaceInKeywords.xml");
+        public static string NamespaceInKeywordsCSharp = LoadContentFromBaseline("NamespaceInKeywords.cs");
+        public static string NamespaceInKeywordsVB = LoadContentFromBaseline("NamespaceInKeywords.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor NamespaceInKeywords = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxNamespaceInKeywords,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, NamespaceInKeywordsCSharp },
+                { ExpectedVB, NamespaceInKeywordsVB }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, NamespaceInKeywords.ExpectedResults, isCSharp, useDSC, "NamespaceInKeywords"),
+        };
+
+        #endregion
+
+        #region NamespaceInKeywordsWithRefModel
+
+        public static string EdmxNamespaceInKeywordsWithRefModel = LoadContentFromBaseline("NamespaceInKeywordsWithRefModel.xml");
+        public static string EdmxNamespaceInKeywordsWithRefModelReferencedEdmx = LoadContentFromBaseline("NamespaceInKeywordsWithRefModelReferenced.xml");
+        public static string NamespaceInKeywordsWithRefModelCSharp = LoadContentFromBaseline("NamespaceInKeywordsWithRefModel.cs");
+        public static string NamespaceInKeywordsWithRefModelVB = LoadContentFromBaseline("NamespaceInKeywordsWithRefModel.vb");
+        public static string NamespaceInKeywordsWithRefModelCSharpUseDSC = LoadContentFromBaseline("NamespaceInKeywordsWithRefModelDSC.cs");
+        public static string NamespaceInKeywordsWithRefModelVBUseDSC = LoadContentFromBaseline("NamespaceInKeywordsWithRefModelDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor NamespaceInKeywordsWithRefModel = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxNamespaceInKeywordsWithRefModel,
+            GetReferencedModelReaderFunc = (url,proxy,headers) => XmlReader.Create(new MemoryStream(Encoding.UTF8.GetBytes(EdmxNamespaceInKeywordsWithRefModelReferencedEdmx))),
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, NamespaceInKeywordsWithRefModelCSharp },
+                { ExpectedVB, NamespaceInKeywordsWithRefModelVB },
+                { ExpectedCSharpUseDSC, NamespaceInKeywordsWithRefModelCSharpUseDSC },
+                { ExpectedVBUseDSC, NamespaceInKeywordsWithRefModelVBUseDSC },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, NamespaceInKeywordsWithRefModel.ExpectedResults, isCSharp, useDSC, "NamespaceInKeywordsWithRefModel"),
+        };
+
+        #endregion
+
+        #region MultiReferenceModel
+
+        public static string EdmxWithMultiReferenceModel = LoadContentFromBaseline("MultiReferenceModel.xml");
+        public static string MultiReferenceModelCoreTermsEdmx = LoadContentFromBaseline("MultiReferenceModelCoreTerms.xml");
+        public static string MultiReferenceModelDeviceModelTermsEdmx = LoadContentFromBaseline("MultiReferenceModelDeviceModelTerms.xml");
+        public static string MultiReferenceModelGPSEdmx = LoadContentFromBaseline("MultiReferenceModelGPS.xml");
+        public static string MultiReferenceModelLocationEdmx = LoadContentFromBaseline("MultiReferenceModelLocation.xml");
+        public static string MultiReferenceModelMapEdmx = LoadContentFromBaseline("MultiReferenceModelMap.xml");
+
+        public static string MultiReferenceModelCSharp = LoadContentFromBaseline("MultiReferenceModel.cs");
+        public static string MultiReferenceModelVB = LoadContentFromBaseline("MultiReferenceModel.vb");
+        public static string MultiReferenceModelCSharpUseDSC = LoadContentFromBaseline("MultiReferenceModelDSC.cs");
+        public static string MultiReferenceModelVBUseDSC = LoadContentFromBaseline("MultiReferenceModelDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor MultiReferenceModel = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxWithMultiReferenceModel,
+            GetReferencedModelReaderFunc = (url,proxy,headers) =>
+            {
+                string text;
+                var urlStr = url.OriginalString;
+                if (urlStr.EndsWith("CoreTerms.csdl", StringComparison.Ordinal))
+                {
+                    text = MultiReferenceModelCoreTermsEdmx;
+                }
+                else if (urlStr.EndsWith("DeviceModelTerms.csdl", StringComparison.Ordinal))
+                {
+                    text = MultiReferenceModelDeviceModelTermsEdmx;
+                }
+                else if (urlStr.EndsWith("GPS.csdl", StringComparison.Ordinal))
+                {
+                    text = MultiReferenceModelGPSEdmx;
+                }
+                else if (urlStr.EndsWith("Location.csdl", StringComparison.Ordinal))
+                {
+                    text = MultiReferenceModelLocationEdmx;
+                }
+                else // (urlStr.EndsWith("Map.csdl"))
+                {
+                    text = MultiReferenceModelMapEdmx;
+                }
+
+                var setting = new XmlReaderSettings()
+                {
+                    IgnoreWhitespace = true
+                };
+
+                return XmlReader.Create(new MemoryStream(Encoding.UTF8.GetBytes(text)), setting);
+            },
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, MultiReferenceModelCSharp },
+                { ExpectedVB, MultiReferenceModelVB },
+                { ExpectedCSharpUseDSC, MultiReferenceModelCSharpUseDSC },
+                { ExpectedVBUseDSC, MultiReferenceModelVBUseDSC }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, MultiReferenceModel.ExpectedResults, isCSharp, useDSC, "MultiReferenceModel"),
+        };
+
+        #endregion
+
+        #region MultiReferenceModelRelativeUri
+
+        public static string EdmxWithMultiReferenceModelRelativeUriFilePath = GetAbsoluteUriOfFile("MultiReferenceModelRelativeUri.xml");
+
+        public static string MultiReferenceModelRelativeUriCSharp = LoadContentFromBaseline("MultiReferenceModelRelativeUri.cs");
+        public static string MultiReferenceModelRelativeUriVB = LoadContentFromBaseline("MultiReferenceModelRelativeUri.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor MultiReferenceModelRelativeUri = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, MultiReferenceModelRelativeUriCSharp },
+                { ExpectedVB, MultiReferenceModelRelativeUriVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, MultiReferenceModelRelativeUri.ExpectedResults, isCSharp, useDSC, "MultiReferenceModelRelativeUri"),
+        };
+
+        #endregion
+
+        #region UpperCamelCaseWithNamespacePrefix
+
+        public static string EdmxUpperCamelCaseWithNamespacePrefix = LoadContentFromBaseline("UpperCamelCaseWithNamespacePrefix.xml");
+        public static string UpperCamelCaseWithNamespacePrefixCSharp = LoadContentFromBaseline("UpperCamelCaseWithNamespacePrefix.cs");
+        public static string UpperCamelCaseWithNamespacePrefixVB = LoadContentFromBaseline("UpperCamelCaseWithNamespacePrefix.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor UpperCamelCaseWithNamespacePrefix = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxUpperCamelCaseWithNamespacePrefix,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, UpperCamelCaseWithNamespacePrefixCSharp },
+                { ExpectedVB, UpperCamelCaseWithNamespacePrefixVB }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, UpperCamelCaseWithNamespacePrefix.ExpectedResults, isCSharp, useDSC, "UpperCamelCaseWithNamespacePrefix"),
+        };
+
+        #endregion
+
+        #region UpperCamelCaseWithoutNamespacePrefix
+
+        public static string EdmxUpperCamelCaseWithoutNamespacePrefix = LoadContentFromBaseline("UpperCamelCaseWithoutNamespacePrefix.xml");
+        public static string UpperCamelCaseWithoutNamespacePrefixCSharp = LoadContentFromBaseline("UpperCamelCaseWithoutNamespacePrefix.cs");
+        public static string UpperCamelCaseWithoutNamespacePrefixVB = LoadContentFromBaseline("UpperCamelCaseWithoutNamespacePrefix.vb");
+        public static string UpperCamelCaseWithoutNamespacePrefixCSharpUseDSC = LoadContentFromBaseline("UpperCamelCaseWithoutNamespacePrefixDSC.cs");
+        public static string UpperCamelCaseWithoutNamespacePrefixVBUseDSC = LoadContentFromBaseline("UpperCamelCaseWithoutNamespacePrefixDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor UpperCamelCaseWithoutNamespacePrefix = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxUpperCamelCaseWithoutNamespacePrefix,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, UpperCamelCaseWithoutNamespacePrefixCSharp },
+                { ExpectedVB, UpperCamelCaseWithoutNamespacePrefixVB },
+                { ExpectedCSharpUseDSC, UpperCamelCaseWithoutNamespacePrefixCSharpUseDSC },
+                { ExpectedVBUseDSC, UpperCamelCaseWithoutNamespacePrefixVBUseDSC }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, UpperCamelCaseWithoutNamespacePrefix.ExpectedResults, isCSharp, useDSC, "UpperCamelCaseWithoutNamespacePrefix"),
+        };
+
+        #endregion
+
+        #region IgnoreUnexpectedElementsAndAttributes
+
+        public static string EdmxUnexpectedElementsAndAttributes = LoadContentFromBaseline("UnexpectedElementsAndAttributes.xml");
+        public static string UnexpectedElementsAndAttributesCSharp = LoadContentFromBaseline("UnexpectedElementsAndAttributes.cs");
+        public static string UnexpectedElementsAndAttributesVB = LoadContentFromBaseline("UnexpectedElementsAndAttributes.vb");
+        public static ODataT4CodeGeneratorTestsDescriptor IgnoreUnexpectedElementsAndAttributes = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxUnexpectedElementsAndAttributes,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, UnexpectedElementsAndAttributesCSharp },
+                { ExpectedVB, UnexpectedElementsAndAttributesVB }
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, IgnoreUnexpectedElementsAndAttributes.ExpectedResults, isCSharp, useDSC, "UnexpectedElementsAndAttributes"),
+        };
+
+        #endregion
+
+        #region PrefixConflict
+        public static string EdmxPrefixConflict = LoadContentFromBaseline("PrefixConflict.xml");
+        public static string PrefixConflictCSharp = LoadContentFromBaseline("PrefixConflict.cs");
+        public static string PrefixConflictVBUseDSC = LoadContentFromBaseline("PrefixConflictDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor PrefixConflict = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxPrefixConflict,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, PrefixConflictCSharp },
+                { ExpectedVBUseDSC, PrefixConflictVBUseDSC },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, PrefixConflict.ExpectedResults, isCSharp, useDSC, "PrefixConflict"),
+        };
+        #endregion
+
+        #region DupNames
+
+        public static string EdmxDupNames = LoadContentFromBaseline("DupNames.xml");
+        public static string DupNamesCSharp = LoadContentFromBaseline("DupNames.cs");
+        public static string DupNamesVBUseDSC = LoadContentFromBaseline("DupNamesDSC.vb");
+        public static string DupNamesWithCamelCaseCSharpUseDSC = LoadContentFromBaseline("DupNamesWithCamelCaseDSC.cs");
+        public static string DupNamesWithCamelCaseVB = LoadContentFromBaseline("DupNamesWithCamelCase.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor DupNames = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxDupNames,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, DupNamesCSharp },
+                { ExpectedVBUseDSC, DupNamesVBUseDSC },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, DupNames.ExpectedResults, isCSharp, useDSC, "DupNames"),
+        };
+
+        public static ODataT4CodeGeneratorTestsDescriptor DupNamesWithCamelCase = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxDupNames,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharpUseDSC, DupNamesWithCamelCaseCSharpUseDSC },
+                { ExpectedVB, DupNamesWithCamelCaseVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, DupNamesWithCamelCase.ExpectedResults, isCSharp, useDSC, "DupNamesWithCamelCase"),
+        };
+        #endregion
+
+        #region OverrideOperations
+
+        public static string EdmxOverrideOperations = LoadContentFromBaseline("OverrideOperations.xml");
+        public static string OverrideOperationsCSharpUseDSC = LoadContentFromBaseline("OverrideOperationsDSC.cs");
+        public static string OverrideOperationsVB = LoadContentFromBaseline("OverrideOperations.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor OverrideOperations = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxOverrideOperations,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharpUseDSC, OverrideOperationsCSharpUseDSC },
+                { ExpectedVB, OverrideOperationsVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, OverrideOperations.ExpectedResults, isCSharp, useDSC, "OverrideOperations"),
+        };
+        #endregion
+
+        #region AbstractEntityTypeWithoutKey
+        public static string EdmxAbstractEntityTypeWithoutKey = LoadContentFromBaseline("AbstractEntityTypeWithoutKey.xml");
+        public static string AbstractEntityTypeWithoutKeyCSharpUseDSC = LoadContentFromBaseline("AbstractEntityTypeWithoutKeyDSC.cs");
+        public static string AbstractEntityTypeWithoutKeyVB = LoadContentFromBaseline("AbstractEntityTypeWithoutKey.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor AbstractEntityTypeWithoutKey = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxAbstractEntityTypeWithoutKey,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharpUseDSC, AbstractEntityTypeWithoutKeyCSharpUseDSC },
+                { ExpectedVB, AbstractEntityTypeWithoutKeyVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, AbstractEntityTypeWithoutKey.ExpectedResults, isCSharp, useDSC, "AbstractEntityTypeWithoutKey"),
+        };
+        #endregion
+
+        #region EntitiesEnumsFunctionsSelectTypes
+        public static string EdmxEntitiesEnumsFunctionsSelectTypes = LoadContentFromBaseline("EntitiesEnumsFunctions.xml");
+        public static string EntitiesEnumsFunctionsSelectTypesCSharp = LoadContentFromBaseline("EntitiesEnumsFunctionsSelectTypes.cs");
+        public static string EntitiesEnumsFunctionsSelectTypesVB = LoadContentFromBaseline("EntitiesEnumsFunctionsSelectTypes.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor EntitiesEnumsFunctionsSelectTypes = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxEntitiesEnumsFunctionsSelectTypes,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, EntitiesEnumsFunctionsSelectTypesCSharp },
+                { ExpectedVB, EntitiesEnumsFunctionsSelectTypesVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, EntitiesEnumsFunctionsSelectTypes.ExpectedResults, isCSharp, useDSC, "EntitiesEnumsFunctionsSelectTypes"),
+        };
+        #endregion
+
+        #region SourceParameterOrKeysProperty
+
+        public static string EdmxSourceParameterOrKeysProperty = LoadContentFromBaseline("SourceParameterOrKeysProperty.xml");
+        public static string SourceParameterOrKeysPropertyCSharp = LoadContentFromBaseline("SourceParameterOrKeysProperty.cs");
+        public static string SourceParameterOrKeysPropertyCSharpUseDSC = LoadContentFromBaseline("SourceParameterOrKeysPropertyDSC.cs");
+        public static string SourceParameterOrKeysPropertyVB = LoadContentFromBaseline("SourceParameterOrKeysProperty.vb");
+        public static string SourceParameterOrKeysPropertyVBUseDSC = LoadContentFromBaseline("SourceParameterOrKeysPropertyDSC.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor SourceParameterOrKeysProperty = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxSourceParameterOrKeysProperty,
+            ExpectedResults = new Dictionary<string, string>() { { ExpectedCSharp, SourceParameterOrKeysPropertyCSharp }, { ExpectedCSharpUseDSC, SourceParameterOrKeysPropertyCSharpUseDSC }, { ExpectedVB, SourceParameterOrKeysPropertyVB }, { ExpectedVBUseDSC, SourceParameterOrKeysPropertyVBUseDSC } },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, SourceParameterOrKeysProperty.ExpectedResults, isCSharp, useDSC, nameof(SourceParameterOrKeysProperty)),
+        };
+        #endregion
+
+        #region EntityTypeMarkedObsolete
+        public static string EdmxEntityTypeMarkedObsolete = LoadContentFromBaseline("EntityTypeMarkedObsolete.xml");
+        public static string EntityTypeMarkedObsoleteCSharp = LoadContentFromBaseline("EntityTypeMarkedObsolete.cs");
+        public static string EntityTypeMarkedObsoleteVB = LoadContentFromBaseline("EntityTypeMarkedObsolete.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor EntityTypeMarkedObsolete = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxEntityTypeMarkedObsolete,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, EntityTypeMarkedObsoleteCSharp },
+                { ExpectedVB, EntityTypeMarkedObsoleteVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, EntityTypeMarkedObsolete.ExpectedResults, isCSharp, useDSC, "EntityTypeMarkedObsolete"),
+        };
+        #endregion
+
+        #region EntitySetMarkedObsolete
+        public static string EdmxEntitySetMarkedObsolete = LoadContentFromBaseline("EntitySetMarkedObsolete.xml");
+        public static string EntitySetMarkedObsoleteCSharp = LoadContentFromBaseline("EntitySetMarkedObsolete.cs");
+        public static string EntitySetMarkedObsoleteVB = LoadContentFromBaseline("EntitySetMarkedObsolete.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor EntitySetMarkedObsolete = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxEntitySetMarkedObsolete,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, EntitySetMarkedObsoleteCSharp },
+                { ExpectedVB, EntitySetMarkedObsoleteVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, EntitySetMarkedObsolete.ExpectedResults, isCSharp, useDSC, "EntitySetMarkedObsolete"),
+        };
+        #endregion
+
+        #region BoundActionsAndFunctionsMarkedObsolete
+        public static string EdmxBoundActionsAndFunctionsMarkedObsolete = LoadContentFromBaseline("BoundActionsAndFunctionsMarkedObsolete.xml");
+        public static string BoundActionsAndFunctionsMarkedObsoleteCSharp = LoadContentFromBaseline("BoundActionsAndFunctionsMarkedObsolete.cs");
+        public static string BoundActionsAndFunctionsMarkedObsoleteVB = LoadContentFromBaseline("BoundActionsAndFunctionsMarkedObsolete.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor BoundActionsAndFunctionsMarkedObsolete = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxBoundActionsAndFunctionsMarkedObsolete,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, BoundActionsAndFunctionsMarkedObsoleteCSharp },
+                { ExpectedVB, BoundActionsAndFunctionsMarkedObsoleteVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, BoundActionsAndFunctionsMarkedObsolete.ExpectedResults, isCSharp, useDSC, "BoundActionsAndFunctionsMarkedObsolete"),
+        };
+        #endregion
+
+        #region EntityAndNavPropertiesMarkedObsolete
+        public static string EdmxPropertyAndNavPropertiesMarkedObsolete = LoadContentFromBaseline("PropertyAndNavPropertiesMarkedObsolete.xml");
+        public static string PropertyAndNavPropertiesMarkedObsoleteCSharp = LoadContentFromBaseline("PropertyAndNavPropertiesMarkedObsolete.cs");
+        public static string PropertyAndNavPropertiesMarkedObsoleteVB = LoadContentFromBaseline("PropertyAndNavPropertiesMarkedObsolete.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor PropertyAndNavPropertiesMarkedObsolete = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxPropertyAndNavPropertiesMarkedObsolete,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, PropertyAndNavPropertiesMarkedObsoleteCSharp },
+                { ExpectedVB, PropertyAndNavPropertiesMarkedObsoleteVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, PropertyAndNavPropertiesMarkedObsolete.ExpectedResults, isCSharp, useDSC, "PropertyAndNavPropertiesMarkedObsolete"),
+        };
+        #endregion
+
+        #region FunctionsAndActionImportsMarkedObsolete
+        public static string EdmxFunctionsAndActionImportsMarkedObsolete = LoadContentFromBaseline("FunctionsAndActionImportsMarkedObsolete.xml");
+        public static string FunctionsAndActionImportsMarkedObsoleteCSharp = LoadContentFromBaseline("FunctionsAndActionImportsMarkedObsolete.cs");
+        public static string FunctionsAndActionImportsMarkedObsoleteVB = LoadContentFromBaseline("FunctionsAndActionImportsMarkedObsolete.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor FunctionsAndActionImportsMarkedObsolete = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxFunctionsAndActionImportsMarkedObsolete,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, FunctionsAndActionImportsMarkedObsoleteCSharp },
+                { ExpectedVB, FunctionsAndActionImportsMarkedObsoleteVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, FunctionsAndActionImportsMarkedObsolete.ExpectedResults, isCSharp, useDSC, "FunctionsAndActionImportsMarkedObsolete"),
+        };
+        #endregion
+
+        #region SingletonsMarkedObsolete
+        public static string EdmxSingletonsMarkedObsolete = LoadContentFromBaseline("SingletonsMarkedObsolete.xml");
+        public static string SingletonsMarkedObsoleteCSharp = LoadContentFromBaseline("SingletonsMarkedObsolete.cs");
+        public static string SingletonsMarkedObsoleteVB = LoadContentFromBaseline("SingletonsMarkedObsolete.vb");
+
+        public static ODataT4CodeGeneratorTestsDescriptor SingletonsMarkedObsolete = new ODataT4CodeGeneratorTestsDescriptor()
+        {
+            Metadata = EdmxSingletonsMarkedObsolete,
+            ExpectedResults = new Dictionary<string, string>()
+            {
+                { ExpectedCSharp, SingletonsMarkedObsoleteCSharp },
+                { ExpectedVB, SingletonsMarkedObsoleteVB },
+            },
+            Verify = (code, isCSharp, useDSC) => VerifyGeneratedCode(code, SingletonsMarkedObsolete.ExpectedResults, isCSharp, useDSC, "SingletonsMarkedObsolete"),
+        };
+        #endregion
+
+        #region RevisionsAnnotationMissingProperties
+        public static string EdmxRevisionsAnnotationMissingRevisionKind = LoadContentFromBaseline("RevisionsAnnotationMissingRevisionKind.xml");
+        public static string EdmxRevisionsAnnotationMissingDescription = LoadContentFromBaseline("RevisionsAnnotationMissingDescription.xml");
+        #endregion
+    }
+}

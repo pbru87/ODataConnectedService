@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<edmx:Edmx xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx" Version="4.0">
+  <edmx:DataServices>
+    <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="Microsoft.OData.Service.Sample.TrippinInMemory.Models">
+      <EntityType Name="Person">
+        <Key>
+          <PropertyRef Name="UserName"/>
+        </Key>
+        <Property Name="UserName" Nullable="false" Type="Edm.String"/>
+        <Property Name="Gender" Nullable="false" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.PersonGender"/>
+        <Property Name="Age" Type="Edm.Int64"/>
+        <Property Name="HomeAddress" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Location"/>
+        <NavigationProperty Name="Friends" Type="Collection(Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person)"/>
+        <NavigationProperty Name="Trips" Type="Collection(Microsoft.OData.Service.Sample.TrippinInMemory.Models.Trip)"/>
+        <NavigationProperty Name="PlanItems" Type="Collection(Microsoft.OData.Service.Sample.TrippinInMemory.Models.PlanItem)"/>
+      </EntityType>
+      <EntityType Name="Airline">
+        <Key>
+          <PropertyRef Name="AirlineCode"/>
+        </Key>
+        <Property Name="AirlineCode" Nullable="false" Type="Edm.String"/>
+        <Property Name="Name" Type="Edm.String"/>
+      </EntityType>
+      <EntityType Name="Airport">
+        <Key>
+          <PropertyRef Name="IcaoCode"/>
+        </Key>
+        <Property Name="Name" Type="Edm.String"/>
+        <Property Name="IcaoCode" Nullable="false" Type="Edm.String"/>
+      </EntityType>
+      <ComplexType Name="Location">
+        <Property Name="Address" Type="Edm.String"/>
+        <Property Name="City" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.City"/>
+      </ComplexType>
+      <ComplexType Name="City">
+        <Property Name="Name" Type="Edm.String"/>
+      </ComplexType>
+      <EntityType Name="Trip">
+        <Key>
+          <PropertyRef Name="TripId"/>
+        </Key>
+        <Property Name="TripId" Nullable="false" Type="Edm.Int32"/>
+        <Property Name="Name" Type="Edm.String"/>
+      </EntityType>
+      <EntityType Name="PlanItem">
+        <Key>
+          <PropertyRef Name="PlanItemId"/>
+        </Key>
+        <Property Name="PlanItemId" Type="Edm.Int32" Nullable="false"/>
+        <Property Name="ConfirmationCode" Type="Edm.String"/>
+        <Property Name="StartsAt" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="EndsAt" Type="Edm.DateTimeOffset" Nullable="false"/>
+        <Property Name="Duration" Type="Edm.Duration" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="PublicTransportation" BaseType="Microsoft.OData.Service.Sample.TrippinInMemory.Models.PlanItem">
+        <Property Name="SeatNumber" Type="Edm.String"/>
+      </EntityType>
+      <EntityType Name="Flight" BaseType="Microsoft.OData.Service.Sample.TrippinInMemory.Models.PublicTransportation">
+        <Property Name="FlightNumber" Type="Edm.String"/>
+        <NavigationProperty Name="Airline" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Airline"/>
+        <NavigationProperty Name="From" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Airport"/>
+        <NavigationProperty Name="To" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Airport"/>
+      </EntityType>
+      <EntityType Name="Employee" BaseType="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person">
+        <Property Name="Cost" Nullable="false" Type="Edm.Int64"/>
+        <NavigationProperty Name="Peers" Type="Collection(Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person)"/>
+      </EntityType>
+      <EnumType Name="PersonGender">
+        <Member Name="Male" Value="0"/>
+        <Member Name="Female" Value="1"/>
+        <Member Name="Unknow" Value="2"/>
+      </EnumType>
+      <Function Name="GetPersonWithMostFriends">
+        <ReturnType Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person"/>
+      </Function>
+      <Function Name="GetNearestAirport">
+        <Parameter Name="lat" Nullable="false" Type="Edm.Double"/>
+        <Parameter Name="lon" Nullable="false" Type="Edm.Double"/>
+        <ReturnType Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Airport"/>
+      </Function>
+      <Function Name="GetFavoriteAirline" IsBound="true" EntitySetPath="person">
+	      <Parameter Name="person" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person"/>
+	      <ReturnType Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Airline"/>
+      </Function>
+      <Function Name="GetFriendsTrips" IsBound="true">
+	      <Parameter Name="person" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person"/>
+	      <Parameter Name="userName" Type="Edm.String" Nullable="false" Unicode="false"/>
+	      <ReturnType Type="Collection(Microsoft.OData.Service.Sample.TrippinInMemory.Models.Trip)"/>
+      </Function>
+      <Function Name="GetInvolvedPeople" IsBound="true">
+	      <Parameter Name="trip" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Trip"/>
+	      <ReturnType Type="Collection(Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person)"/>
+      </Function>
+      <Action Name="ResetDataSource"/>
+      <Function Name="UpdatePersonLastName" IsBound="true">
+	      <Parameter Name="person" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person"/>
+	      <Parameter Name="lastName" Type="Edm.String" Nullable="false" Unicode="false"/>
+	      <ReturnType Type="Edm.Boolean" Nullable="false"/>
+      </Function>
+      <Action Name="ShareTrip" IsBound="true">
+	      <Parameter Name="personInstance" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person"/>
+	      <Parameter Name="userName" Type="Edm.String" Nullable="false" Unicode="false"/>
+	      <Parameter Name="tripId" Type="Edm.Int32" Nullable="false"/>
+      </Action>
+      <EntityContainer Name="Container">
+        <EntitySet Name="People" EntityType="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person">
+          <NavigationPropertyBinding Target="People" Path="Friends"/>
+        </EntitySet>
+        <EntitySet Name="Airlines" EntityType="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Airline" />
+        <EntitySet Name="Airports" EntityType="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Airport"/>
+        <Singleton Name="Me" Type="Microsoft.OData.Service.Sample.TrippinInMemory.Models.Person"/>
+        <FunctionImport Name="GetPersonWithMostFriends" EntitySet="People" Function="Microsoft.OData.Service.Sample.TrippinInMemory.Models.GetPersonWithMostFriends"/>
+        <FunctionImport Name="GetNearestAirport" EntitySet="Airports" Function="Microsoft.OData.Service.Sample.TrippinInMemory.Models.GetNearestAirport"/>
+        <ActionImport Name="ResetDataSource" Action="Microsoft.OData.Service.Sample.TrippinInMemory.Models.ResetDataSource"/>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>
