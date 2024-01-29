@@ -50,6 +50,11 @@ namespace Microsoft.OData.CodeGen.Common
             {
                 var webRequest = (HttpWebRequest)WebRequest.Create(metadataUri);
 
+                if (!string.IsNullOrWhiteSpace(serviceConfiguration.CustomHttpHeaders))
+                {
+                    webRequest.Headers.Add(serviceConfiguration.CustomHttpHeaders);
+                }
+
                 if (serviceConfiguration.IncludeWebProxy)
                 {
                     var proxy = new WebProxy(serviceConfiguration.WebProxyHost);

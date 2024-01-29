@@ -153,7 +153,7 @@ namespace Microsoft.OData.CodeGen.CodeGeneration
             await MessageLogger.WriteMessageAsync(LogMessageCategory.Information, "Generating Client Proxy for OData V4...");
             ODataT4CodeGenerator t4CodeGenerator = CodeGeneratorFactory.Create();
             t4CodeGenerator.MetadataDocumentUri = metadata;
-            t4CodeGenerator.UseDataServiceCollection = serviceConfiguration.UseDataServiceCollection;
+            t4CodeGenerator.UseDataServiceCollection = true; // serviceConfiguration.UseDataServiceCollection;
             t4CodeGenerator.TargetLanguage =
                 languageOption == LanguageOption.GenerateCSharpCode
                     ? ODataT4CodeGenerator.LanguageOption.CSharp
