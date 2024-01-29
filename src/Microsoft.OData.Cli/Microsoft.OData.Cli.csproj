@@ -8,18 +8,20 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>odata-cli</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
-    <PackageId>Microsoft.OData.Cli</PackageId>
-    <Version>0.1.0</Version>
-    <Authors>Microsoft</Authors>
+    <PackageId>SuWPB.OData.Cli</PackageId>
+    <Version>0.1.0-doc-bc-api-v1</Version>
+    <Authors>Patrick Brunck</Authors>
     <Product>Microsoft.OData.Cli</Product>
-    <Description>The odata-cli is a CLI tool for generating strongly typed C# and Visual Basic client code for a specified OData service. It generates a DataServiceContext class to interact with the service and CLR types for each entity type and complex type in the service model. It does exactly what the OData Connected Service does.  </Description>
+    <Description>This package is a fork of "Microsoft.OData.Cli" (see https://github.com/OData/ODataConnectedService/tree/master/src/Microsoft.OData.Cli) originally created by "Microsoft". - The odata-cli is a CLI tool for generating strongly typed C# and Visual Basic client code for a specified OData service. It generates a DataServiceContext class to interact with the service and CLR types for each entity type and complex type in the service model. It does exactly what the OData Connected Service does.  </Description>
     <PackageTags>odata</PackageTags>
     <Copyright>Copyright 2022</Copyright>
-    <RepositoryUrl>https://github.com/OData/ODataConnectedService/tree/master/src/Microsoft.OData.Cli</RepositoryUrl>
+    <RepositoryUrl>https://github.com/pbru87/ODataConnectedService/tree/doc-bc-api-v1/src/Microsoft.OData.Cli</RepositoryUrl>
     <PackageLicenseFile>License.txt</PackageLicenseFile>
     <SignAssembly>True</SignAssembly>
     <AssemblyOriginatorKeyFile>tools\OcsCliKey.snk</AssemblyOriginatorKeyFile>
     <DelaySign>False</DelaySign>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageReleaseNotes>Inofficial pre-release of the OData CLI tool. Built from branch: https://github.com/pbru87/ODataConnectedService/tree/doc-bc-api-v1</PackageReleaseNotes>
   </PropertyGroup>
   
   <ItemGroup>
